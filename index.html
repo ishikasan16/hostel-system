@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Hostel Room Allocation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold"><i class="fas fa-building"></i> Smart Hostel</h1>
+            <div class="space-x-4">
+                <button onclick="showSection('add')" class="hover:bg-blue-700 px-3 py-2 rounded">Add Room</button>
+                <button onclick="showSection('list')" class="hover:bg-blue-700 px-3 py-2 rounded">All Rooms</button>
+                <button onclick="showSection('search')" class="hover:bg-blue-700 px-3 py-2 rounded">Search & Allocate</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <!-- Add Room Section -->
+        <div id="add-section" class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Add New Room</h2>
+            <form id="addRoomForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">Room Number</label>
+                    <input type="text" id="roomNo" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g., 301">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">Capacity (students)</label>
+                    <input type="number" id="capacity" required min="1" max="10" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g., 2">
+                </div>
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="hasAC" class="w-5 h-5 mr-2">
+                        <span class="text-gray-700">Has AC</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="hasAttachedWashroom" class="w-5 h-5 mr-2">
+                        <span class="text-gray-700">Attached Washroom</span>
+                    </label>
+                </div>
+                <button type="submit" class="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-plus"></i> Add Room
+                </button>
+            </form>
+        </div>
+
+        <!-- Room List Section -->
+        <div id="list-section" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">All Rooms</h2>
+            <div id="roomsList" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Search & Allocate Section -->
+        <div id="search-section" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Search & Allocate Room</h2>
+            
+            <!-- Search Form -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 class="font-semibold mb-3">Student Requirements</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Number of Students</label>
+                        <input type="number" id="searchCapacity" min="1" value="1" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">AC Required?</label>
+                        <select id="searchAC" class="w-full p-2 border rounded-lg">
+                            <option value="">No Preference</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Attached Washroom?</label>
+                        <select id="searchWashroom" class="w-full p-2 border rounded-lg">
+                            <option value="">No Preference</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button onclick="searchRooms()" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 flex-1">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <button onclick="clearSearch()" class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div id="searchResults" class="mb-6"></div>
+
+            <!-- Allocate Button -->
+            <div class="flex justify-center mb-6">
+                <button onclick="allocateRoom()" class="bg-purple-600 text-white py-3 px-8 rounded-lg hover:bg-purple-700 text-lg font-semibold shadow-lg">
+                    <i class="fas fa-user-plus"></i> Allocate Room
+                </button>
+            </div>
+
+            <!-- Allocation Result -->
+            <div id="allocationResult" class="text-center"></div>
+        </div>
+
+        <!-- Output Panel -->
+        <div id="output-section" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">System Output</h2>
+            <div id="outputPanel" class="p-4 bg-gray-100 rounded-lg min-h-32"></div>
+        </div>
+    </div>
+
+    <script>
+        // Data Store
+        let rooms = [
+            { id: 1, roomNo: '101', capacity: 2, hasAC: true, hasAttachedWashroom: true },
+            { id: 2, roomNo: '102', capacity: 2, hasAC: true, hasAttachedWashroom: false },
+            { id: 3, roomNo: '103', capacity: 3, hasAC: false, hasAttachedWashroom: true },
+            { id: 4, roomNo: '104', capacity: 4, hasAC: true, hasAttachedWashroom: true },
+            { id: 5, roomNo: '105', capacity: 2, hasAC: false, hasAttachedWashroom: false },
+            { id: 6, roomNo: '201', capacity: 3, hasAC: true, hasAttachedWashroom: true },
+            { id: 7, roomNo: '202', capacity: 2, hasAC: true, hasAttachedWashroom: false },
+            { id: 8, roomNo: '203', capacity: 4, hasAC: false, hasAttachedWashroom: true },
+        ];
+
+        let searchResults = [];
+        let allocationHistory = [];
+
+        // Show/Hide Sections
+        function showSection(section) {
+            ['add', 'list', 'search'].forEach(s => {
+                document.getElementById(s + '-section').classList.add('hidden');
+            });
+            document.getElementById(section + '-section').classList.remove('hidden');
+            
+            if (section === 'list') renderRooms();
+        }
+
+        // Add Room
+        document.getElementById('addRoomForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const roomNo = document.getElementById('roomNo').value;
+            const capacity = parseInt(document.getElementById('capacity').value);
+            const hasAC = document.getElementById('hasAC').checked;
+            const hasAttachedWashroom = document.getElementById('hasAttachedWashroom').checked;
+
+            // Check for duplicate
+            if (rooms.some(r => r.roomNo === roomNo)) {
+                alert('Room number already exists!');
+                return;
+            }
+
+            const newRoom = {
+                id: rooms.length + 1,
+                roomNo,
+                capacity,
+                hasAC,
+                hasAttachedWashroom
+            };
+
+            rooms.push(newRoom);
+            alert('Room added successfully!');
+            this.reset();
+            logOutput(`Room ${roomNo} added: Capacity ${capacity}, AC: ${hasAC ? 'Yes' : 'No'}, Washroom: ${hasAttachedWashroom ? 'Yes' : 'No'}`);
+        });
+
+        // Render All Rooms
+        function renderRooms(filtered = null) {
+            const displayRooms = filtered || rooms;
+            const container = document.getElementById('roomsList');
+            
+            if (displayRooms.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-3 text-center">No rooms found</p>';
+                return;
+            }
+
+            container.innerHTML = displayRooms.map(room => `
+                <div class="border rounded-lg p-4 ${room.hasAC && room.hasAttachedWashroom ? 'bg-blue-50 border-blue-300' : 'bg-gray-50'}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-bold text-xl">Room ${room.roomNo}</h3>
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">${room.capacity} students</span>
+                    </div>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p><i class="fas fa-snowflake ${room.hasAC ? 'text-blue-500' : 'text-gray-400'}"></i> ${room.hasAC ? 'AC Available' : 'No AC'}</p>
+                        <p><i class="fas fa-bath ${room.hasAttachedWashroom ? 'text-green-500' : 'text-gray-400'}"></i> ${room.hasAttachedWashroom ? 'Attached Washroom' : 'Common Washroom'}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search Rooms
+        function searchRooms() {
+            const minCapacity = parseInt(document.getElementById('searchCapacity').value) || 1;
+            const acRequired = document.getElementById('searchAC').value;
+            const washroomRequired = document.getElementById('searchWashroom').value;
+
+            searchResults = rooms.filter(room => {
+                if (room.capacity < minCapacity) return false;
+                if (acRequired !== '' && room.hasAC !== (acRequired === 'true')) return false;
+                if (washroomRequired !== '' && room.hasAttachedWashroom !== (washroomRequired === 'true')) return false;
+                return true;
+            });
+
+            // Sort by capacity (smallest first)
+            searchResults.sort((a, b) => a.capacity - b.capacity);
+
+            const container = document.getElementById('searchResults');
+            
+            if (searchResults.length === 0) {
+                container.innerHTML = '<p class="text-red-500 text-center py-4">No rooms match your criteria</p>';
+            } else {
+                container.innerHTML = `
+                    <h3 class="font-semibold mb-3">Available Rooms (${searchResults.length} found)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        ${searchResults.map(room => `
+                            <div class="border-2 border-green-200 bg-green-50 rounded-lg p-3">
+                                <p class="font-bold">Room ${room.roomNo}</p>
+                                <p class="text-sm">Capacity: ${room.capacity}</p>
+                                <p class="text-xs text-gray-600">
+                                    ${room.hasAC ? 'AC' : 'No AC'} | 
+                                    ${room.hasAttachedWashroom ? 'Attached' : 'Common'}
+                                </p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            logOutput(`Search: ${minCapacity} students, AC: ${acRequired || 'Any'}, Washroom: ${washroomRequired || 'Any'} → Found ${searchResults.length} rooms`);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchCapacity').value = 1;
+            document.getElementById('searchAC').value = '';
+            document.getElementById('searchWashroom').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+            searchResults = [];
+        }
+
+        // Allocate Room Function
+        function allocateRoom() {
+            const students = parseInt(document.getElementById('searchCapacity').value) || 1;
+            const needsAC = document.getElementById('searchAC').value === 'true';
+            const needsWashroom = document.getElementById('searchWashroom').value === 'true';
+            const hasACPreference = document.getElementById('searchAC').value !== '';
+            const hasWashroomPreference = document.getElementById('searchWashroom').value !== '';
+
+            const resultContainer = document.getElementById('allocationResult');
+
+            // Find smallest room that satisfies all conditions
+            let availableRooms = rooms.filter(room => {
+                if (room.capacity < students) return false;
+                if (hasACPreference && !room.hasAC && needsAC) return false;
+                if (hasWashroomPreference && !room.hasAttachedWashroom && needsWashroom) return false;
+                return true;
+            });
+
+            // Sort by capacity (smallest first) - this is the key algorithm
+            availableRooms.sort((a, b) => a.capacity - b.capacity);
+
+            if (availableRooms.length === 0) {
+                resultContainer.innerHTML = `
+                    <div class="bg-red-100 border-2 border-red-400 text-red-700 p-4 rounded-lg">
+                        <i class="fas fa-times-circle text-4xl mb-2"></i>
+                        <p class="text-xl font-bold">No room available</p>
+                        <p class="text-sm">No room matches the requirements for ${students} student(s)</p>
+                    </div>
+                `;
+                logOutput(`Allocation FAILED: No room available for ${students} student(s), AC: ${needsAC ? 'Yes' : 'No'}, Washroom: ${needsWashroom ? 'Yes' : 'No'}`);
+            } else {
+                // Allocate the smallest room
+                const allocatedRoom = availableRooms[0];
+                
+                // Remove room from available list (mark as occupied)
+                rooms = rooms.filter(r => r.id !== allocatedRoom.id);
+
+                const allocation = {
+                    id: allocationHistory.length + 1,
+                    room: allocatedRoom,
+                    students: students,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                allocationHistory.push(allocation);
+
+                resultContainer.innerHTML = `
+                    <div class="bg-green-100 border-2 border-green-400 text-green-700 p-4 rounded-lg">
+                        <i class="fas fa-check-circle text-4xl mb-2"></i>
+                        <p class="text-xl font-bold">Room Allocated Successfully!</p>
+                        <p class="text-2xl font-bold mt-2">Room ${allocatedRoom.roomNo}</p>
+                        <p class="text-sm">Capacity: ${allocatedRoom.capacity} | Students: ${students}</p>
+                        <p class="text-xs mt-2">${allocatedRoom.hasAC ? 'AC' : 'No AC'} | ${allocatedRoom.hasAttachedWashroom ? 'Attached Washroom' : 'Common Washroom'}</p>
+                    </div>
+                `;
+                logOutput(`Allocation SUCCESS: Room ${allocatedRoom.roomNo} allocated to ${students} student(s) - Smallest suitable room found (capacity: ${allocatedRoom.capacity})`);
+                
+                // Refresh search results
+                searchRooms();
+            }
+        }
+
+        // Output Panel
+        function logOutput(message) {
+            const panel = document.getElementById('outputPanel');
+            const timestamp = new Date().toLocaleTimeString();
+            panel.innerHTML += `<p class="text-sm text-gray-700 border-b border-gray-200 py-1"><span class="text-blue-500">[${timestamp}]</span> ${message}</p>`;
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        // Initialize
+        renderRooms();
+    </script>
+</body>
+</html>
